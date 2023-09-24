@@ -3,7 +3,6 @@ import base64
 import os
 import re
 import subprocess
-import time
 
 class RadikoLoginAuth:
     """Radiko login and authorization utility"""
@@ -95,7 +94,16 @@ class RadikoLoginAuth:
     
 class RadikoRecorder:
     """Radiko recorder"""
-    def __init__(self, mail = None, password = None):
+    def __init__(self, mail = None, password = None) -> None:
+        """Initialize RadikoRecorder
+        
+        Args:
+            mail (str, optional): mail address. Defaults to None.
+            password (str, optional): password. Defaults to None.
+            
+        Raises:
+            Exception: if mail or password is not set
+        """
         if mail is None:
             try:
                 mail = os.environ['RADIKO_MAIL']
@@ -113,7 +121,12 @@ class RadikoRecorder:
     def __repr__(self) -> str:
         return f"RadikoRecorder()"
         
-    def gen_psuedo_hash(self):
+    def gen_psuedo_hash(self) -> str:
+        """Generate psuedo hash
+        
+        Returns:
+            str: psuedo hash
+        """
         # Read 100 bytes from /dev/random
         random_bytes = os.urandom(100)
         # Encode the bytes to base64
@@ -124,7 +137,19 @@ class RadikoRecorder:
         # Cut the string to 32 characters
         return re.sub("[^0-9a-fA-F]", "", base64_str).lower()[:32]
 
-    def record(self, station_id, fromtime, totime, fname):
+    def record(self, station_id: str, fromtime: str, totime: str, fname: str) -> subprocess.CompletedProcess:
+        """Record radiko station from fromtime to totime to fname
+        
+        Args:
+            station_id (str): station id
+            fromtime (str): start time in format YYYYMMDDHHMM
+            totime (str): end time in format YYYYMMDDHHMM
+            fname (str): output file name
+            
+        Returns:
+            subprocess.CompletedProcess: ffmpeg process
+            
+        """
         # check if radiko login is done
         if not self.is_radiko_login_done:
             self.radiko_util.login()
