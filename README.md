@@ -1,1 +1,35 @@
 # pyradiko
+
+## Requirements
+
+- Python 3.6+
+- ffmpeg
+
+## Installation
+
+```bash
+$ pip install git+https://github.com/yonesuke/pyradiko.git
+```
+
+## Configuration
+
+```bash
+$ export RADIKO_MAIL="your mail address"
+$ export RADIKO_PASSWORD="your password"
+```
+
+## Usage
+
+オードリーのオールナイトニッポンを録音する例
+
+```python
+from pyradiko import RadikoRecorder
+recorder = RadikoRecorder()
+
+station = "LFR" # ニッポン放送
+start_time = "202309240100" # format: YYYYMMDDHHMM
+end_time = "202309240300" # format: YYYYMMDDHHMM
+output = "audrey.m4a"
+
+res = recorder.record(station, start_time, end_time, output)
+```
