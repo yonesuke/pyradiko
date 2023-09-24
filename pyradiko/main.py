@@ -3,6 +3,7 @@ import base64
 import os
 import re
 import subprocess
+import time
 
 class RadikoLoginAuth:
     """Radiko login and authorization utility"""
@@ -111,9 +112,6 @@ class RadikoRecorder:
         
     def __repr__(self) -> str:
         return f"RadikoRecorder()"
-    
-    def __del__(self):
-        self.radiko_util.logout()
         
     def gen_psuedo_hash(self):
         # Read 100 bytes from /dev/random
@@ -154,4 +152,9 @@ class RadikoRecorder:
         ]
         command = ' '.join(command)
         res = subprocess.run(command, capture_output=True, shell=True)
+        
+        # logout
+        self.radiko_util.logout()
+        self.is_radiko_login_done = False
+        
         return res
