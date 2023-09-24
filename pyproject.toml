@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'pyradiko'
+version = '0.0.1'
+description = 'Record Radiko program'
+readme = 'README.md'
+license = {file = 'LICENSE'}
+
+[tool.setuptools]
+packages = ['pyradiko']
+
