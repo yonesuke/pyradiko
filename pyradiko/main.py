@@ -3,6 +3,7 @@ import base64
 import os
 import re
 import subprocess
+import contextlib
 
 class RadikoLoginAuth:
     """Radiko login and authorization utility"""
@@ -91,6 +92,14 @@ class RadikoLoginAuth:
         if auth2_res.status_code != 200:
             self.logout()
             raise Exception('auth2 failed')
+        
+    @contextlib.contextmanager
+    def auto_login_logout(self):
+        self.login()
+        self.auth1()
+        self.auth2()
+        yield self
+        self.logout()
     
 class RadikoRecorder:
     """Radiko recorder"""
@@ -115,9 +124,7 @@ class RadikoRecorder:
             except KeyError:
                 raise Exception('password is not set to environment variable')
         self.radiko_util = RadikoLoginAuth(mail, password)
-        
-        self.is_radiko_login_done = False
-        
+
     def __repr__(self) -> str:
         return f"RadikoRecorder()"
         
@@ -150,12 +157,6 @@ class RadikoRecorder:
             subprocess.CompletedProcess: ffmpeg process
             
         """
-        # check if radiko login is done
-        if not self.is_radiko_login_done:
-            self.radiko_util.login()
-            self.radiko_util.auth1()
-            self.radiko_util.auth2()
-            self.is_radiko_login_done = True
         
         assert len(fromtime) == 12, 'fromtime must be in format YYYYMMDDHHMM'
         assert len(totime) == 12, 'totime must be in format YYYYMMDDHHMM'
@@ -163,23 +164,20 @@ class RadikoRecorder:
         lsid = self.gen_psuedo_hash()
         url_download = f'https://radiko.jp/v2/api/ts/playlist.m3u8?station_id={station_id}&start_at={fromtime}00&ft={fromtime}00&end_at={totime}00&to={totime}00&seek={fromtime}00&l=15&lsid={lsid}&type=c'
         
-        command = [
-            "ffmpeg",
-            "-loglevel", "debug",
-            "-fflags", "+discardcorrupt",
-            "-headers", f'"X-Radiko-Authtoken: {self.radiko_util.authtoken}"',
-            "-i", f'"{url_download}"',
-            "-acodec", "copy",
-            "-vn",
-            "-bsf:a", "aac_adtstoasc",
-            "-y",
-            fname
-        ]
-        command = ' '.join(command)
-        res = subprocess.run(command, capture_output=True, shell=True)
-        
-        # logout
-        self.radiko_util.logout()
-        self.is_radiko_login_done = False
+        with self.radiko_util.auto_login_logout() as radiko_util:
+            command = [
+                "ffmpeg",
+                "-loglevel", "debug",
+                "-fflags", "+discardcorrupt",
+                "-headers", f'"X-Radiko-Authtoken: {radiko_util.authtoken}"',
+                "-i", f'"{url_download}"',
+                "-acodec", "copy",
+                "-vn",
+                "-bsf:a", "aac_adtstoasc",
+                "-y",
+                fname
+            ]
+            command = ' '.join(command)
+            res = subprocess.run(command, capture_output=True, shell=True)
         
         return res
