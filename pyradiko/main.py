@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import contextlib
+import datetime
 
 class RadikoLoginAuth:
     """Radiko login and authorization utility"""
@@ -147,11 +148,13 @@ class RadikoRecorder:
     def record(self, station_id: str, fromtime: str, totime: str, fname: str) -> subprocess.CompletedProcess:
         """Record radiko station from fromtime to totime to fname
         
+        This function uses ffmpeg to record a radiko station for a specified duration and save it as an m4a file.
+        
         Args:
             station_id (str): station id
             fromtime (str): start time in format YYYYMMDDHHMM
             totime (str): end time in format YYYYMMDDHHMM
-            fname (str): output file name
+            fname (str): output file name of the recording with .m4a extension
             
         Returns:
             subprocess.CompletedProcess: ffmpeg process
@@ -160,6 +163,16 @@ class RadikoRecorder:
         
         assert len(fromtime) == 12, 'fromtime must be in format YYYYMMDDHHMM'
         assert len(totime) == 12, 'totime must be in format YYYYMMDDHHMM'
+        # fromtimeとtotimeが過去一週間以内であるかをチェック
+        now = datetime.datetime.now()
+        week_ago = now - datetime.timedelta(days=7)
+        from_dt = datetime.datetime.strptime(fromtime, '%Y%m%d%H%M')
+        to_dt = datetime.datetime.strptime(totime, '%Y%m%d%H%M')
+        assert week_ago <= from_dt <= now, 'fromtime must be within the past week'
+        assert week_ago <= to_dt <= now, 'totime must be within the past week'
+        
+        # fnameの拡張子をチェック
+        assert fname.endswith('.m4a'), 'fname must have .m4a extension'
         
         lsid = self.gen_psuedo_hash()
         url_download = f'https://radiko.jp/v2/api/ts/playlist.m3u8?station_id={station_id}&start_at={fromtime}00&ft={fromtime}00&end_at={totime}00&to={totime}00&seek={fromtime}00&l=15&lsid={lsid}&type=c'
