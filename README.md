@@ -1,5 +1,11 @@
 # pyradiko
 
+pythonでradiko音源を録音する
+
+基本的にこちらのshell scriptをpythonに焼き直したもの。感謝。
+
+- https://github.com/uru2/rec_radiko_ts
+
 ## Requirements
 
 - Python 3.6+
