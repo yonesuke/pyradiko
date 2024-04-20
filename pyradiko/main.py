@@ -38,7 +38,7 @@ class RadikoLoginAuth:
         is_areafree = self.login_json['areafree'] == '1'
 
         if not self.radiko_session or not is_areafree:
-            raise Exception('Login failed')
+            raise PermissionError('Login failed')
 
     def logout(self):
         requests.post(
@@ -66,11 +66,11 @@ class RadikoLoginAuth:
 
         if not self.authtoken or not self.keyoffset or not self.keylength:
             self.logout()
-            raise Exception('auth1 failed')
+            raise PermissionError('auth1 failed')
 
     def auth2(self):
         if self.radiko_session is None:
-            raise Exception('Not logged in')
+            raise PermissionError('Not logged in')
 
         partialkey = base64.b64encode(
             # vscode autocomplete
@@ -89,7 +89,7 @@ class RadikoLoginAuth:
         )
         if auth2_res.status_code != 200:
             self.logout()
-            raise Exception('auth2 failed')
+            raise PermissionError('auth2 failed')
 
     @contextlib.contextmanager
     def auto_login_logout(self):
