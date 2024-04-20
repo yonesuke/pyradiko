@@ -27,7 +27,8 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
         return f"RadikoLoginUtil(mail={self.mail}, password={'*'*len(self.password)})"
 
     def login(self) -> None:
-        self.login_json = requests.post(
+        """Login to radiko"""
+        login_json = requests.post(
             URL_LOGIN,
             data = {
                 'mail': self.mail,
@@ -36,13 +37,14 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
             timeout=TIMEOUT
         ).json()
 
-        self.radiko_session = self.login_json['radiko_session']
-        is_areafree = self.login_json['areafree'] == '1'
+        self.radiko_session = login_json['radiko_session']
+        is_areafree = login_json['areafree'] == '1'
 
         if not self.radiko_session or not is_areafree:
             raise PermissionError('Login failed')
 
     def logout(self):
+        """Logout from radiko"""
         requests.post(
             URL_LOGOUT,
             data = {
@@ -53,6 +55,7 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
         self.radiko_session = None
 
     def auth1(self):
+        """Get authtoken, keyoffset, keylength from radiko"""
         auth1_res = requests.get(
             URL_AUTH1,
             headers = {
@@ -73,6 +76,7 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
             raise PermissionError('auth1 failed')
 
     def auth2(self):
+        """Get partialkey from radiko"""
         if self.radiko_session is None:
             raise PermissionError('Not logged in')
 
