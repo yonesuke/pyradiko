@@ -15,7 +15,7 @@ URL_AUTH1 = 'https://radiko.jp/v2/api/auth1'
 URL_AUTH2_BASE = 'https://radiko.jp/v2/api/auth2'
 AUTHKEY_VAL = 'bcd151073c03b352e1ef2fd66c32209da9ca0afa'
 
-class RadikoLoginAuth:
+class RadikoLoginAuth(contextlib.ContextDecorator):
     """Radiko login and authorization utility"""
     def __init__(self, mail, password):
         self.mail = mail
@@ -94,12 +94,13 @@ class RadikoLoginAuth:
             self.logout()
             raise PermissionError('auth2 failed')
 
-    @contextlib.contextmanager
-    def auto_login_logout(self):
+    def __enter__(self):
         self.login()
         self.auth1()
         self.auth2()
-        yield self
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
         self.logout()
 
 class RadikoRecorder:
@@ -184,7 +185,7 @@ class RadikoRecorder:
             f'&end_at={totime}00&to={totime}00&seek={fromtime}00&l=15&lsid={lsid}&type=c'
         )
 
-        with self.radiko_util.auto_login_logout() as radiko_util:
+        with self.radiko_util as radiko_util:
             command = [
                 "ffmpeg",
                 "-loglevel", "debug",
