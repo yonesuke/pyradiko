@@ -145,10 +145,13 @@ class RadikoRecorder:
         # Cut the string to 32 characters
         return re.sub("[^0-9a-fA-F]", "", base64_str).lower()[:32]
 
-    def record(self, station_id: str, fromtime: str, totime: str, fname: str) -> subprocess.CompletedProcess:
+    def record(
+        self, station_id: str, fromtime: str, totime: str, fname: str
+    ) -> subprocess.CompletedProcess:
         """Record radiko station from fromtime to totime to fname
         
-        This function uses ffmpeg to record a radiko station for a specified duration and save it as an m4a file.
+        This function uses ffmpeg to record a radiko station
+        for a specified duration and save it as an m4a file.
         
         Args:
             station_id (str): station id
@@ -175,7 +178,11 @@ class RadikoRecorder:
         assert fname.endswith('.m4a'), 'fname must have .m4a extension'
 
         lsid = self.gen_psuedo_hash()
-        url_download = f'https://radiko.jp/v2/api/ts/playlist.m3u8?station_id={station_id}&start_at={fromtime}00&ft={fromtime}00&end_at={totime}00&to={totime}00&seek={fromtime}00&l=15&lsid={lsid}&type=c'
+        url_download = (
+            'https://radiko.jp/v2/api/ts/playlist.m3u8'
+            f'?station_id={station_id}&start_at={fromtime}00&ft={fromtime}00'
+            f'&end_at={totime}00&to={totime}00&seek={fromtime}00&l=15&lsid={lsid}&type=c'
+        )
 
         with self.radiko_util.auto_login_logout() as radiko_util:
             command = [
