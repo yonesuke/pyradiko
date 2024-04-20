@@ -1,12 +1,14 @@
 """Recording radiko program module"""
 
-import requests
 import base64
+import contextlib
+import datetime
 import os
 import re
 import subprocess
-import contextlib
-import datetime
+
+import requests
+
 
 class RadikoLoginAuth:
     """Radiko login and authorization utility"""
