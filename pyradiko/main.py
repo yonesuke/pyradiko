@@ -49,9 +49,6 @@ class RadikoLoginAuth:
         )
         self.radiko_session = None
 
-    def check_premium(self) -> bool:
-        return self.login_json['paid_member'] == '1'
-
     def auth1(self):
         auth1_res = requests.get(
             URL_AUTH1,
