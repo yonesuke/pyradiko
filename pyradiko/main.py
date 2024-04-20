@@ -160,7 +160,7 @@ class RadikoRecorder:
             subprocess.CompletedProcess: ffmpeg process
             
         """
-        
+
         assert len(fromtime) == 12, 'fromtime must be in format YYYYMMDDHHMM'
         assert len(totime) == 12, 'totime must be in format YYYYMMDDHHMM'
         # fromtimeとtotimeが過去一週間以内であるかをチェック
@@ -170,13 +170,13 @@ class RadikoRecorder:
         to_dt = datetime.datetime.strptime(totime, '%Y%m%d%H%M')
         assert week_ago <= from_dt <= now, 'fromtime must be within the past week'
         assert week_ago <= to_dt <= now, 'totime must be within the past week'
-        
+
         # fnameの拡張子をチェック
         assert fname.endswith('.m4a'), 'fname must have .m4a extension'
-        
+
         lsid = self.gen_psuedo_hash()
         url_download = f'https://radiko.jp/v2/api/ts/playlist.m3u8?station_id={station_id}&start_at={fromtime}00&ft={fromtime}00&end_at={totime}00&to={totime}00&seek={fromtime}00&l=15&lsid={lsid}&type=c'
-        
+
         with self.radiko_util.auto_login_logout() as radiko_util:
             command = [
                 "ffmpeg",
@@ -192,5 +192,5 @@ class RadikoRecorder:
             ]
             command = ' '.join(command)
             res = subprocess.run(command, capture_output=True, shell=True)
-        
+
         return res
