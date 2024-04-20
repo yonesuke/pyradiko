@@ -12,19 +12,19 @@ class RadikoLoginAuth:
         self.mail = mail
         self.password = password
         self.radiko_session = None
-        
+
         # for login
         self.url_login = 'https://radiko.jp/v4/api/member/login'
         self.url_logout = 'https://radiko.jp/v4/api/member/logout'
-        
+
         # for authorization
         self.url_auth1 = 'https://radiko.jp/v2/api/auth1'
         self.url_auth2_base = 'https://radiko.jp/v2/api/auth2'
         self.authkey_val = 'bcd151073c03b352e1ef2fd66c32209da9ca0afa'
-        
+
     def __repr__(self) -> str:
         return f"RadikoLoginUtil(mail={self.mail}, password={'*'*len(self.password)})"
-        
+
     def login(self) -> None:
         self.login_json = requests.post(
             self.url_login,
@@ -33,10 +33,10 @@ class RadikoLoginAuth:
                 'pass': self.password
             }
         ).json()
-        
+
         self.radiko_session = self.login_json['radiko_session']
         self.areafree = self.login_json['areafree']
-        
+
         if not self.radiko_session or self.areafree != '1':
             raise Exception('Login failed')
 
@@ -48,10 +48,10 @@ class RadikoLoginAuth:
             }
         )
         self.radiko_session = None
-    
+
     def check_premium(self) -> bool:
         return True if self.login_json['paid_member'] == '1' else False
-    
+
     def auth1(self):
         auth1_res = requests.get(
             self.url_auth1,
@@ -62,24 +62,24 @@ class RadikoLoginAuth:
                 "X-Radiko-User": "dummy_user"
             }
         ).headers
-        
+
         self.authtoken = auth1_res['X-Radiko-Authtoken']
         self.keyoffset = auth1_res['X-Radiko-KeyOffset']
         self.keylength = auth1_res['X-Radiko-KeyLength']
-        
+
         if not self.authtoken or not self.keyoffset or not self.keylength:
             self.logout()
             raise Exception('auth1 failed')
-    
+
     def auth2(self):
         if self.radiko_session is None:
             raise Exception('Not logged in')
-        
+
         partialkey = base64.b64encode(
             # vscode autocomplete
             self.authkey_val[int(self.keyoffset):int(self.keyoffset) + int(self.keylength)].encode()
         )
-        
+
         url_auth2 = self.url_auth2_base + '?radiko_session=' + self.radiko_session
         auth2_res = requests.get(
             url_auth2,
@@ -93,7 +93,7 @@ class RadikoLoginAuth:
         if auth2_res.status_code != 200:
             self.logout()
             raise Exception('auth2 failed')
-        
+
     @contextlib.contextmanager
     def auto_login_logout(self):
         self.login()
@@ -101,7 +101,7 @@ class RadikoLoginAuth:
         self.auth2()
         yield self
         self.logout()
-    
+
 class RadikoRecorder:
     """Radiko recorder"""
     def __init__(self, mail = None, password = None) -> None:
@@ -128,7 +128,7 @@ class RadikoRecorder:
 
     def __repr__(self) -> str:
         return f"RadikoRecorder()"
-        
+
     def gen_psuedo_hash(self) -> str:
         """Generate psuedo hash
         
