@@ -1,5 +1,9 @@
 # pyradiko
 
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Ruff](https://github.com/yonesuke/pyradiko/actions/workflows/ruff.yml/badge.svg)](https://github.com/yonesuke/pyradiko/actions/workflows/ruff.yml)
+
+
 pythonでradiko音源を録音する
 
 基本的にこちらのshell scriptをpythonに焼き直したもの。感謝。
