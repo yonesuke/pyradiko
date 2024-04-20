@@ -191,6 +191,6 @@ class RadikoRecorder:
                 fname
             ]
             command = ' '.join(command)
-            res = subprocess.run(command, capture_output=True, shell=True)
+            res = subprocess.run(command, capture_output=True, shell=True, check=False)
 
         return res
