@@ -9,6 +9,11 @@ import subprocess
 
 import requests
 
+URL_LOGIN = 'https://radiko.jp/v4/api/member/login'
+URL_LOGOUT = 'https://radiko.jp/v4/api/member/logout'
+URL_AUTH1 = 'https://radiko.jp/v2/api/auth1'
+URL_AUTH2_BASE = 'https://radiko.jp/v2/api/auth2'
+AUTHKEY_VAL = 'bcd151073c03b352e1ef2fd66c32209da9ca0afa'
 
 class RadikoLoginAuth:
     """Radiko login and authorization utility"""
@@ -17,21 +22,12 @@ class RadikoLoginAuth:
         self.password = password
         self.radiko_session = None
 
-        # for login
-        self.url_login = 'https://radiko.jp/v4/api/member/login'
-        self.url_logout = 'https://radiko.jp/v4/api/member/logout'
-
-        # for authorization
-        self.url_auth1 = 'https://radiko.jp/v2/api/auth1'
-        self.url_auth2_base = 'https://radiko.jp/v2/api/auth2'
-        self.authkey_val = 'bcd151073c03b352e1ef2fd66c32209da9ca0afa'
-
     def __repr__(self) -> str:
         return f"RadikoLoginUtil(mail={self.mail}, password={'*'*len(self.password)})"
 
     def login(self) -> None:
         self.login_json = requests.post(
-            self.url_login,
+            URL_LOGIN,
             data = {
                 'mail': self.mail,
                 'pass': self.password
@@ -39,14 +35,14 @@ class RadikoLoginAuth:
         ).json()
 
         self.radiko_session = self.login_json['radiko_session']
-        self.areafree = self.login_json['areafree']
+        is_areafree = self.login_json['areafree'] == '1'
 
-        if not self.radiko_session or self.areafree != '1':
+        if not self.radiko_session or not is_areafree:
             raise Exception('Login failed')
 
     def logout(self):
         requests.post(
-            self.url_logout,
+            URL_LOGOUT,
             data = {
                 'radiko_session': self.radiko_session,
             }
@@ -58,7 +54,7 @@ class RadikoLoginAuth:
 
     def auth1(self):
         auth1_res = requests.get(
-            self.url_auth1,
+            URL_AUTH1,
             headers = {
                 "X-Radiko-App": "pc_html5",
                 "X-Radiko-App-Version": "0.0.1",
@@ -81,10 +77,10 @@ class RadikoLoginAuth:
 
         partialkey = base64.b64encode(
             # vscode autocomplete
-            self.authkey_val[int(self.keyoffset):int(self.keyoffset) + int(self.keylength)].encode()
+            AUTHKEY_VAL[int(self.keyoffset):int(self.keyoffset) + int(self.keylength)].encode()
         )
 
-        url_auth2 = self.url_auth2_base + '?radiko_session=' + self.radiko_session
+        url_auth2 = URL_AUTH2_BASE + '?radiko_session=' + self.radiko_session
         auth2_res = requests.get(
             url_auth2,
             headers = {
