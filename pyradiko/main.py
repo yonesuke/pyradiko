@@ -31,7 +31,8 @@ class RadikoLoginAuth:
             data = {
                 'mail': self.mail,
                 'pass': self.password
-            }
+            },
+            timeout=10
         ).json()
 
         self.radiko_session = self.login_json['radiko_session']
@@ -57,7 +58,8 @@ class RadikoLoginAuth:
                 "X-Radiko-App-Version": "0.0.1",
                 "X-Radiko-Device": "pc",
                 "X-Radiko-User": "dummy_user"
-            }
+            },
+            timeout=10
         ).headers
 
         self.authtoken = auth1_res['X-Radiko-Authtoken']
@@ -85,7 +87,8 @@ class RadikoLoginAuth:
                 "X-Radiko-User": "dummy_user",
                 "X-Radiko-AuthToken": self.authtoken,
                 "X-Radiko-Partialkey": partialkey,
-            }
+            },
+            timeout=10
         )
         if auth2_res.status_code != 200:
             self.logout()
