@@ -14,6 +14,7 @@ URL_LOGOUT = 'https://radiko.jp/v4/api/member/logout'
 URL_AUTH1 = 'https://radiko.jp/v2/api/auth1'
 URL_AUTH2_BASE = 'https://radiko.jp/v2/api/auth2'
 AUTHKEY_VAL = 'bcd151073c03b352e1ef2fd66c32209da9ca0afa'
+TIMEOUT = 10
 
 class RadikoLoginAuth(contextlib.ContextDecorator):
     """Radiko login and authorization utility"""
@@ -32,7 +33,7 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
                 'mail': self.mail,
                 'pass': self.password
             },
-            timeout=10
+            timeout=TIMEOUT
         ).json()
 
         self.radiko_session = self.login_json['radiko_session']
@@ -46,7 +47,8 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
             URL_LOGOUT,
             data = {
                 'radiko_session': self.radiko_session,
-            }
+            },
+            timeout=TIMEOUT
         )
         self.radiko_session = None
 
@@ -59,7 +61,7 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
                 "X-Radiko-Device": "pc",
                 "X-Radiko-User": "dummy_user"
             },
-            timeout=10
+            timeout=TIMEOUT
         ).headers
 
         self.authtoken = auth1_res['X-Radiko-Authtoken']
@@ -88,7 +90,7 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
                 "X-Radiko-AuthToken": self.authtoken,
                 "X-Radiko-Partialkey": partialkey,
             },
-            timeout=10
+            timeout=TIMEOUT
         )
         if auth2_res.status_code != 200:
             self.logout()
