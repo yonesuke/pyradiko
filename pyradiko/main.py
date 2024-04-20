@@ -23,6 +23,10 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
         self.password = password
         self.radiko_session = None
 
+        self.authtoken = None
+        self.keyoffset = None
+        self.keylength = None
+
     def __repr__(self) -> str:
         return f"RadikoLoginUtil(mail={self.mail}, password={'*'*len(self.password)})"
 
