@@ -8,6 +8,9 @@ version = '0.0.1'
 description = 'Record Radiko program'
 readme = 'README.md'
 license = {file = 'LICENSE'}
+dependencies = [
+    'requests'
+]
 
 [tool.setuptools]
 packages = ['pyradiko']
