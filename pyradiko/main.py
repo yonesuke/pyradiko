@@ -120,13 +120,13 @@ class RadikoRecorder:
         if mail is None:
             try:
                 mail = os.environ['RADIKO_MAIL']
-            except KeyError:
-                raise ValueError('mail is not set to environment variable')
+            except KeyError as e:
+                raise ValueError('mail is not set to environment variable') from e
         if password is None:
             try:
                 password = os.environ['RADIKO_PASSWORD']
-            except KeyError:
-                raise ValueError('password is not set to environment variable')
+            except KeyError as e:
+                raise ValueError('password is not set to environment variable') from e
         self.radiko_util = RadikoLoginAuth(mail, password)
 
     def __repr__(self) -> str:
