@@ -130,7 +130,7 @@ class RadikoRecorder:
         self.radiko_util = RadikoLoginAuth(mail, password)
 
     def __repr__(self) -> str:
-        return f"RadikoRecorder()"
+        return "RadikoRecorder()"
 
     def gen_psuedo_hash(self) -> str:
         """Generate psuedo hash
