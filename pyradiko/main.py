@@ -6,6 +6,9 @@ import datetime
 import os
 import re
 import subprocess
+import tempfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import requests
 
@@ -13,8 +16,10 @@ URL_LOGIN = 'https://radiko.jp/v4/api/member/login'
 URL_LOGOUT = 'https://radiko.jp/v4/api/member/logout'
 URL_AUTH1 = 'https://radiko.jp/v2/api/auth1'
 URL_AUTH2_BASE = 'https://radiko.jp/v2/api/auth2'
+URL_STREAM_BASE = 'https://radiko.jp/v3/station/stream/pc_html5'
 AUTHKEY_VAL = 'bcd151073c03b352e1ef2fd66c32209da9ca0afa'
 TIMEOUT = 10
+CHUNK_MAX_SEC = 300
 
 class RadikoLoginAuth(contextlib.ContextDecorator):
     """Radiko login and authorization utility"""
@@ -22,10 +27,12 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
         self.mail = mail
         self.password = password
         self.radiko_session = None
+        self.is_areafree = False
 
         self.authtoken = None
         self.keyoffset = None
         self.keylength = None
+        self.area_id = None
 
     def __repr__(self) -> str:
         return f"RadikoLoginUtil(mail={self.mail}, password={'*'*len(self.password)})"
@@ -41,10 +48,10 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
             timeout=TIMEOUT
         ).json()
 
-        self.radiko_session = login_json['radiko_session']
-        is_areafree = login_json['areafree'] == '1'
+        self.radiko_session = login_json.get('radiko_session', '')
+        self.is_areafree = login_json.get('areafree') == '1'
 
-        if not self.radiko_session or not is_areafree:
+        if not self.radiko_session or not self.is_areafree:
             raise PermissionError('Login failed')
 
     def logout(self):
@@ -80,12 +87,11 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
             raise PermissionError('auth1 failed')
 
     def auth2(self):
-        """Get partialkey from radiko"""
+        """Get partialkey and area_id from radiko"""
         if self.radiko_session is None:
             raise PermissionError('Not logged in')
 
         partialkey = base64.b64encode(
-            # vscode autocomplete
             AUTHKEY_VAL[int(self.keyoffset):int(self.keyoffset) + int(self.keylength)].encode()
         )
 
@@ -103,6 +109,8 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
         if auth2_res.status_code != 200:
             self.logout()
             raise PermissionError('auth2 failed')
+
+        self.area_id = auth2_res.text.strip().split(',')[0]
 
     def __enter__(self):
         self.login()
@@ -142,73 +150,153 @@ class RadikoRecorder:
 
     def gen_psuedo_hash(self) -> str:
         """Generate psuedo hash
-        
+
         Returns:
             str: psuedo hash
         """
-        # Read 100 bytes from /dev/random
-        random_bytes = os.urandom(100)
-        # Encode the bytes to base64
-        # Convert the bytes to a string
+        random_bytes = os.urandom(40)
         base64_str = base64.b64encode(random_bytes).decode('utf-8')
-        # Remove all non-hexadecimal characters from the string
-        # Convert the string to lowercase
-        # Cut the string to 32 characters
         return re.sub("[^0-9a-fA-F]", "", base64_str).lower()[:32]
+
+    def _get_playlist_url(self, station_id: str, is_areafree: bool) -> str:
+        """Get HLS playlist URL from station XML
+
+        Args:
+            station_id (str): station id
+            is_areafree (bool): whether areafree is enabled
+
+        Returns:
+            str: playlist URL
+        """
+        res = requests.get(
+            f'{URL_STREAM_BASE}/{station_id}.xml',
+            timeout=TIMEOUT
+        )
+        root = ET.fromstring(res.content)
+        areafree_val = '1' if is_areafree else '0'
+
+        for url_elem in root.findall('.//url'):
+            if url_elem.get('timefree') == '1' and url_elem.get('areafree') == areafree_val:
+                playlist_url = url_elem.find('playlist_create_url')
+                if playlist_url is not None and playlist_url.text:
+                    return playlist_url.text.strip()
+
+        raise ValueError(f'Playlist URL not found for station {station_id}')
+
+    def _get_chunk_duration(self, chunk_file: str) -> int:
+        """Get duration of audio file in seconds using ffprobe"""
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+             '-of', 'default=noprint_wrappers=1:nokey=1', chunk_file],
+            capture_output=True, text=True
+        )
+        try:
+            return int(float(result.stdout.strip()) + 0.5)
+        except ValueError:
+            return 0
 
     def record(
         self, station_id: str, fromtime: str, totime: str, fname: str
     ) -> subprocess.CompletedProcess:
         """Record radiko station from fromtime to totime to fname
-        
+
         This function uses ffmpeg to record a radiko station
         for a specified duration and save it as an m4a file.
-        
+
         Args:
             station_id (str): station id
             fromtime (str): start time in format YYYYMMDDHHMM
             totime (str): end time in format YYYYMMDDHHMM
             fname (str): output file name of the recording with .m4a extension
-            
+
         Returns:
             subprocess.CompletedProcess: ffmpeg process
-            
+
         """
 
         assert len(fromtime) == 12, 'fromtime must be in format YYYYMMDDHHMM'
         assert len(totime) == 12, 'totime must be in format YYYYMMDDHHMM'
-        # fromtimeとtotimeが過去一週間以内であるかをチェック
         now = datetime.datetime.now()
         week_ago = now - datetime.timedelta(days=7)
         from_dt = datetime.datetime.strptime(fromtime, '%Y%m%d%H%M')
         to_dt = datetime.datetime.strptime(totime, '%Y%m%d%H%M')
         assert week_ago <= from_dt <= now, 'fromtime must be within the past week'
         assert week_ago <= to_dt <= now, 'totime must be within the past week'
-
-        # fnameの拡張子をチェック
         assert fname.endswith('.m4a'), 'fname must have .m4a extension'
 
         lsid = self.gen_psuedo_hash()
-        url_download = (
-            'https://radiko.jp/v2/api/ts/playlist.m3u8'
-            f'?station_id={station_id}&start_at={fromtime}00&ft={fromtime}00'
-            f'&end_at={totime}00&to={totime}00&seek={fromtime}00&l=15&lsid={lsid}&type=c'
-        )
+        fromtime_sec = fromtime + '00'
+        totime_sec = totime + '00'
 
         with self.radiko_util as radiko_util:
-            command = [
-                "ffmpeg",
-                "-loglevel", "debug",
-                "-fflags", "+discardcorrupt",
-                "-headers", f'"X-Radiko-Authtoken: {radiko_util.authtoken}"',
-                "-i", f'"{url_download}"',
-                "-acodec", "copy",
-                "-vn",
-                "-bsf:a", "aac_adtstoasc",
-                "-y",
-                fname
-            ]
-            command = ' '.join(command)
-            res = subprocess.run(command, capture_output=True, shell=True, check=False)
+            playlist_url = self._get_playlist_url(station_id, radiko_util.is_areafree)
+            ffmpeg_header = f'X-Radiko-Authtoken: {radiko_util.authtoken}\r\nX-Radiko-AreaId: {radiko_util.area_id}'
+
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_path = Path(tmp_dir)
+                chunk_files = []
+                chunk_no = 0
+                seek_timestamp = from_dt
+                left_sec = int((to_dt - from_dt).total_seconds())
+
+                while left_sec > 0:
+                    chunk_file = tmp_path / f'chunk{chunk_no}.m4a'
+
+                    # Chunk max 300 seconds, round up to nearest 5 seconds
+                    l = CHUNK_MAX_SEC
+                    if left_sec < CHUNK_MAX_SEC:
+                        l = left_sec if left_sec % 5 == 0 else ((left_sec // 5) + 1) * 5
+
+                    seek = seek_timestamp.strftime('%Y%m%d%H%M%S')
+                    end_at = (seek_timestamp + datetime.timedelta(seconds=l)).strftime('%Y%m%d%H%M%S')
+
+                    url = (
+                        f'{playlist_url}?station_id={station_id}'
+                        f'&start_at={fromtime_sec}&ft={fromtime_sec}'
+                        f'&seek={seek}&end_at={end_at}&to={end_at}'
+                        f'&l={l}&lsid={lsid}&type=c'
+                    )
+
+                    result = subprocess.run([
+                        'ffmpeg',
+                        '-nostdin',
+                        '-loglevel', 'quiet',
+                        '-fflags', '+discardcorrupt',
+                        '-headers', ffmpeg_header,
+                        '-http_seekable', '0',
+                        '-seekable', '0',
+                        '-i', url,
+                        '-acodec', 'copy',
+                        '-vn',
+                        '-bsf:a', 'aac_adtstoasc',
+                        '-y',
+                        str(chunk_file)
+                    ], capture_output=True)
+
+                    if result.returncode != 0:
+                        return result
+
+                    chunk_files.append(chunk_file)
+                    chunk_sec = self._get_chunk_duration(str(chunk_file)) or l
+                    left_sec -= chunk_sec
+                    seek_timestamp += datetime.timedelta(seconds=chunk_sec)
+                    chunk_no += 1
+
+                # Concat chunks
+                filelist_path = tmp_path / 'filelist.txt'
+                with open(filelist_path, 'w') as f:
+                    for chunk_file in chunk_files:
+                        f.write(f"file '{chunk_file}'\n")
+
+                res = subprocess.run([
+                    'ffmpeg',
+                    '-loglevel', 'error',
+                    '-f', 'concat',
+                    '-safe', '0',
+                    '-i', str(filelist_path),
+                    '-c', 'copy',
+                    '-y',
+                    fname
+                ], capture_output=True)
 
         return res

@@ -12,20 +12,26 @@ pythonでradiko音源を録音する
 
 ## Requirements
 
-- Python 3.6+
+- Python 3.9+
 - ffmpeg
 
 ## Installation
 
 ```bash
-$ pip install git+https://github.com/yonesuke/pyradiko.git
+pip install git+https://github.com/yonesuke/pyradiko.git
+```
+
+or with uv:
+
+```bash
+uv add git+https://github.com/yonesuke/pyradiko.git
 ```
 
 ## Configuration
 
 ```bash
-$ export RADIKO_MAIL="your mail address"
-$ export RADIKO_PASSWORD="your password"
+export RADIKO_MAIL="your mail address"
+export RADIKO_PASSWORD="your password"
 ```
 
 ## Usage
@@ -34,11 +40,12 @@ $ export RADIKO_PASSWORD="your password"
 
 ```python
 from pyradiko import RadikoRecorder
+
 recorder = RadikoRecorder()
 
-station = "LFR" # ニッポン放送
-start_time = "202309240100" # format: YYYYMMDDHHMM
-end_time = "202309240300" # format: YYYYMMDDHHMM
+station = "LFR"  # ニッポン放送
+start_time = "202501260100"  # format: YYYYMMDDHHMM
+end_time = "202501260300"  # format: YYYYMMDDHHMM
 output = "audrey.m4a"
 
 res = recorder.record(station, start_time, end_time, output)
