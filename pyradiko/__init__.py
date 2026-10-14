@@ -11,7 +11,7 @@ from pyradiko.main import RadikoLoginAuth, RadikoRecorder
 from pyradiko.metadata import embed_metadata
 from pyradiko.program import Program, fetch_programs, get_program_by_time
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",
