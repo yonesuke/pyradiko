@@ -1,7 +1,8 @@
-import unittest
-import tempfile, os
 import datetime
+import os
 import subprocess
+import tempfile
+import unittest
 
 from pyradiko import RadikoRecorder
 
@@ -9,9 +10,18 @@ from pyradiko import RadikoRecorder
 def get_audio_duration(filepath: str) -> float:
     """ffprobeで音源の再生時間(秒)を取得"""
     result = subprocess.run(
-        ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
-         '-of', 'default=noprint_wrappers=1:nokey=1', filepath],
-        capture_output=True, text=True
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            filepath,
+        ],
+        capture_output=True,
+        text=True,
     )
     return float(result.stdout.strip())
 
@@ -20,12 +30,12 @@ class TestRadikoRecorder(unittest.TestCase):
     def test_record_short(self):
         """短時間(3分)の録音テスト"""
         recorder = RadikoRecorder()
-        station_id = 'LFR'
+        station_id = "LFR"
         now = datetime.datetime.now()
-        totime = (now - datetime.timedelta(minutes=2)).strftime('%Y%m%d%H%M')
-        fromtime = (now - datetime.timedelta(minutes=5)).strftime('%Y%m%d%H%M')
+        totime = (now - datetime.timedelta(minutes=2)).strftime("%Y%m%d%H%M")
+        fromtime = (now - datetime.timedelta(minutes=5)).strftime("%Y%m%d%H%M")
         expected_duration = 3 * 60  # 3分
-        with tempfile.NamedTemporaryFile(suffix='.m4a', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as f:
             fname = f.name
         try:
             res = recorder.record(station_id, fromtime, totime, fname)
@@ -34,8 +44,12 @@ class TestRadikoRecorder(unittest.TestCase):
             self.assertGreater(os.path.getsize(fname), 0)
             # 再生時間のチェック（±10秒の誤差を許容）
             duration = get_audio_duration(fname)
-            self.assertAlmostEqual(duration, expected_duration, delta=10,
-                msg=f"再生時間が期待値と異なる: {duration:.1f}秒 (期待: {expected_duration}秒)")
+            self.assertAlmostEqual(
+                duration,
+                expected_duration,
+                delta=10,
+                msg=f"再生時間が期待値と異なる: {duration:.1f}秒 (期待: {expected_duration}秒)",
+            )
         finally:
             if os.path.exists(fname):
                 os.unlink(fname)
@@ -82,23 +96,28 @@ class TestAudrey(unittest.TestCase):
             self.skipTest("直近の放送が1週間以上前のためスキップ")
 
         recorder = RadikoRecorder()
-        station_id = 'LFR'
-        fromtime = start.strftime('%Y%m%d%H%M')
-        totime = (start + datetime.timedelta(minutes=5)).strftime('%Y%m%d%H%M')
+        station_id = "LFR"
+        fromtime = start.strftime("%Y%m%d%H%M")
+        totime = (start + datetime.timedelta(minutes=5)).strftime("%Y%m%d%H%M")
         expected_duration = 5 * 60  # 5分
 
-        with tempfile.NamedTemporaryFile(suffix='.m4a', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as f:
             fname = f.name
         try:
             res = recorder.record(station_id, fromtime, totime, fname)
-            self.assertEqual(res.returncode, 0, f"録音失敗: {res.stderr.decode() if res.stderr else ''}")
+            err_msg = res.stderr.decode(errors="replace") if res.stderr else ""
+            self.assertEqual(res.returncode, 0, f"録音失敗: {err_msg}")
             self.assertTrue(os.path.exists(fname))
             size = os.path.getsize(fname)
             self.assertGreater(size, 100000, f"ファイルサイズが小さすぎる: {size} bytes")
             # 再生時間のチェック（±10秒の誤差を許容）
             duration = get_audio_duration(fname)
-            self.assertAlmostEqual(duration, expected_duration, delta=10,
-                msg=f"再生時間が期待値と異なる: {duration:.1f}秒 (期待: {expected_duration}秒)")
+            self.assertAlmostEqual(
+                duration,
+                expected_duration,
+                delta=10,
+                msg=f"再生時間が期待値と異なる: {duration:.1f}秒 (期待: {expected_duration}秒)",
+            )
             print(f"録音成功: {fname}, サイズ: {size} bytes, 再生時間: {duration:.1f}秒")
         finally:
             if os.path.exists(fname):
@@ -111,29 +130,35 @@ class TestAudrey(unittest.TestCase):
             self.skipTest("直近の放送が1週間以上前のためスキップ")
 
         recorder = RadikoRecorder()
-        station_id = 'LFR'
-        fromtime = start.strftime('%Y%m%d%H%M')
-        totime = end.strftime('%Y%m%d%H%M')
+        station_id = "LFR"
+        fromtime = start.strftime("%Y%m%d%H%M")
+        totime = end.strftime("%Y%m%d%H%M")
         expected_duration = 2 * 60 * 60  # 2時間
 
-        with tempfile.NamedTemporaryFile(suffix='.m4a', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as f:
             fname = f.name
         try:
             res = recorder.record(station_id, fromtime, totime, fname)
-            self.assertEqual(res.returncode, 0, f"録音失敗: {res.stderr.decode() if res.stderr else ''}")
+            err_msg = res.stderr.decode(errors="replace") if res.stderr else ""
+            self.assertEqual(res.returncode, 0, f"録音失敗: {err_msg}")
             self.assertTrue(os.path.exists(fname))
             size = os.path.getsize(fname)
             # 2時間の録音は約40MB程度を期待
             self.assertGreater(size, 30000000, f"ファイルサイズが小さすぎる: {size} bytes")
             # 再生時間のチェック（±30秒の誤差を許容）
             duration = get_audio_duration(fname)
-            self.assertAlmostEqual(duration, expected_duration, delta=30,
-                msg=f"再生時間が期待値と異なる: {duration:.1f}秒 (期待: {expected_duration}秒)")
-            print(f"録音成功: {fname}, サイズ: {size / 1024 / 1024:.1f} MB, 再生時間: {duration / 60:.1f}分")
+            self.assertAlmostEqual(
+                duration,
+                expected_duration,
+                delta=30,
+                msg=f"再生時間が期待値と異なる: {duration:.1f}秒 (期待: {expected_duration}秒)",
+            )
+            size_mb = size / 1024 / 1024
+            print(f"録音成功: {fname}, サイズ: {size_mb:.1f} MB, 再生時間: {duration / 60:.1f}分")
         finally:
             if os.path.exists(fname):
                 os.unlink(fname)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

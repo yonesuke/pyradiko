@@ -4,19 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = 'pyradiko'
-version = '0.0.1'
+version = '0.1.0'
 description = 'Record Radiko program'
 readme = 'README.md'
 license = {file = 'LICENSE'}
+requires-python = '>=3.10'
 dependencies = [
-    'requests'
+    'requests>=2.28.0',
+    'mutagen>=1.47.0',
 ]
 
 [tool.setuptools]
 packages = ['pyradiko']
 
 [tool.ruff]
-exclude = ["tests"]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
