@@ -13,7 +13,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-import requests
+import httpx2
 
 from pyradiko.exceptions import (
     RadikoAuthError,
@@ -30,18 +30,24 @@ URL_AUTH1 = "https://radiko.jp/v2/api/auth1"
 URL_AUTH2_BASE = "https://radiko.jp/v2/api/auth2"
 URL_STREAM_BASE = "https://radiko.jp/v3/station/stream/pc_html5"
 AUTHKEY_VAL = "bcd151073c03b352e1ef2fd66c32209da9ca0afa"
-TIMEOUT = 10
+TIMEOUT = 10.0
 CHUNK_MAX_SEC = 300
 
 
 class RadikoLoginAuth(contextlib.ContextDecorator):
     """Radiko login and authorization utility."""
 
-    def __init__(self, mail: str, password: str, session: requests.Session | None = None) -> None:
+    def __init__(
+        self,
+        mail: str,
+        password: str,
+        client: httpx2.Client | None = None,
+        session: httpx2.Client | None = None,
+    ) -> None:
         self.mail = mail
         self.password = password
-        self.session = session or requests.Session()
-        self._owns_session = session is None
+        self.client = client or session or httpx2.Client(timeout=TIMEOUT)
+        self._owns_client = client is None and session is None
 
         self.radiko_session: str | None = None
         self.is_areafree: bool = False
@@ -57,7 +63,7 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
     def login(self) -> None:
         """Login to radiko premium."""
         try:
-            res = self.session.post(
+            res = self.client.post(
                 URL_LOGIN,
                 data={"mail": self.mail, "pass": self.password},
                 timeout=TIMEOUT,
@@ -79,7 +85,7 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
         """Logout from radiko."""
         if self.radiko_session:
             try:
-                self.session.post(
+                self.client.post(
                     URL_LOGOUT,
                     data={"radiko_session": self.radiko_session},
                     timeout=TIMEOUT,
@@ -88,13 +94,13 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
                 logger.debug(f"Logout failed: {e}")
             self.radiko_session = None
 
-        if self._owns_session:
-            self.session.close()
+        if self._owns_client:
+            self.client.close()
 
     def auth1(self) -> None:
         """Get authtoken, keyoffset, keylength from radiko."""
         try:
-            res = self.session.get(
+            res = self.client.get(
                 URL_AUTH1,
                 headers={
                     "X-Radiko-App": "pc_html5",
@@ -136,7 +142,7 @@ class RadikoLoginAuth(contextlib.ContextDecorator):
 
         url_auth2 = f"{URL_AUTH2_BASE}?radiko_session={self.radiko_session}"
         try:
-            auth2_res = self.session.get(
+            auth2_res = self.client.get(
                 url_auth2,
                 headers={
                     "X-Radiko-Device": "pc",
@@ -199,7 +205,7 @@ class RadikoRecorder:
 
     def _get_playlist_url(self, station_id: str, is_areafree: bool) -> str:
         """Get HLS playlist URL from station XML."""
-        res = requests.get(f"{URL_STREAM_BASE}/{station_id}.xml", timeout=TIMEOUT)
+        res = httpx2.get(f"{URL_STREAM_BASE}/{station_id}.xml", timeout=TIMEOUT)
         if res.status_code != 200:
             raise RadikoPlaylistError(
                 f"Failed to fetch station XML for {station_id} (HTTP {res.status_code})"

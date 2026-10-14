@@ -17,7 +17,7 @@ PythonでRadiko音源を録音するライブラリ。
 
 ### 1. 最低限（録音機能のみ・軽量）
 
-`requests` のみ依存関係に含まれ、`mutagen` はインストールされません。
+`httpx2` のみ依存関係に含まれ、`mutagen` はインストールされません。
 
 ```bash
 uv add git+https://github.com/yonesuke/pyradiko.git

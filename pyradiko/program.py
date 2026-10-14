@@ -8,7 +8,7 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
-import requests
+import httpx2
 
 URL_STATION_DATE_BASE = "https://radiko.jp/v3/program/station/date"
 TIMEOUT = 10
@@ -83,22 +83,24 @@ def calculate_program_date(target_time: str) -> str:
 def fetch_programs(
     station_id: str,
     date_str: str,
-    session: requests.Session | None = None,
+    client: httpx2.Client | None = None,
+    session: httpx2.Client | None = None,
 ) -> list[Program]:
     """Fetch all programs for a station on a specific timetable date.
 
     Args:
         station_id: Station ID (e.g. 'LFR', 'TBS')
         date_str: Date string in YYYYMMDD format
-        session: Optional requests.Session instance
+        client: Optional httpx2.Client instance
+        session: Deprecated alias for client
 
     Returns:
         List of Program objects
     """
     url = f"{URL_STATION_DATE_BASE}/{date_str}/{station_id}.xml"
-    client = session or requests
+    http_client = client or session or httpx2
 
-    res = client.get(url, timeout=TIMEOUT)
+    res = http_client.get(url, timeout=TIMEOUT)
     if res.status_code != 200:
         return []
 
@@ -154,14 +156,16 @@ def fetch_programs(
 def get_program_by_time(
     station_id: str,
     target_time: str,
-    session: requests.Session | None = None,
+    client: httpx2.Client | None = None,
+    session: httpx2.Client | None = None,
 ) -> Program | None:
     """Find the program corresponding to a target time.
 
     Args:
         station_id: Station ID (e.g. 'LFR')
         target_time: Start time in YYYYMMDDHHMM or YYYYMMDDHHMMSS format
-        session: Optional requests.Session instance
+        client: Optional httpx2.Client instance
+        session: Deprecated alias for client
 
     Returns:
         Program object if found, otherwise None
@@ -169,7 +173,7 @@ def get_program_by_time(
     target_clean = (target_time + "00") if len(target_time) == 12 else target_time[:14]
     date_str = calculate_program_date(target_clean)
 
-    programs = fetch_programs(station_id, date_str, session=session)
+    programs = fetch_programs(station_id, date_str, client=client, session=session)
     for prog in programs:
         # Check if target_clean falls within [prog.ft, prog.to) or equals prog.ft
         if prog.ft <= target_clean < prog.to or prog.ft.startswith(target_clean[:12]):

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import requests
+import httpx2
 
 from pyradiko.program import Program
 
@@ -35,13 +35,17 @@ def _detect_image_format(data: bytes, mp4_cover_cls) -> int:
     return mp4_cover_cls.FORMAT_JPEG
 
 
-def fetch_image_data(url: str, session: requests.Session | None = None) -> bytes | None:
+def fetch_image_data(
+    url: str,
+    client: httpx2.Client | None = None,
+    session: httpx2.Client | None = None,
+) -> bytes | None:
     """Fetch image bytes from a URL."""
     if not url:
         return None
     try:
-        client = session or requests
-        res = client.get(url, timeout=10)
+        http_client = client or session or httpx2
+        res = http_client.get(url, timeout=10)
         if res.status_code == 200:
             return res.content
     except Exception as e:
@@ -60,7 +64,8 @@ def embed_metadata(
     desc: str | None = None,
     artwork_url: str | None = None,
     artwork_data: bytes | None = None,
-    session: requests.Session | None = None,
+    client: httpx2.Client | None = None,
+    session: httpx2.Client | None = None,
 ) -> None:
     """Embed metadata tags and cover artwork into an M4A audio file.
 
@@ -77,7 +82,8 @@ def embed_metadata(
         desc: Optional description text.
         artwork_url: Optional URL to fetch cover image from.
         artwork_data: Optional raw bytes of cover image.
-        session: Optional requests.Session for downloading artwork.
+        client: Optional httpx2.Client for downloading artwork.
+        session: Deprecated alias for client.
     """
     path = Path(filepath)
     if not path.exists():
@@ -130,7 +136,7 @@ def embed_metadata(
     if image_bytes is None:
         target_url = artwork_url or (program.img if program else None)
         if target_url:
-            image_bytes = fetch_image_data(target_url, session=session)
+            image_bytes = fetch_image_data(target_url, client=client, session=session)
 
     if image_bytes:
         img_format = _detect_image_format(image_bytes, mp4_cover_cls)

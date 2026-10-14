@@ -59,7 +59,7 @@ class TestProgramMetadata(unittest.TestCase):
         self.assertNotIn("<a", cleaned)
         self.assertNotIn("&lt;", cleaned)
 
-    @patch("requests.get")
+    @patch("httpx2.get")
     def test_fetch_programs_and_get_by_time(self, mock_get):
         mock_resp = MagicMock()
         mock_resp.status_code = 200
