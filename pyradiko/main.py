@@ -19,7 +19,7 @@ from pyradiko.exceptions import (
     RadikoAuthError,
     RadikoPlaylistError,
 )
-from pyradiko.metadata import embed_metadata
+from pyradiko.metadata import embed_metadata as apply_metadata
 from pyradiko.program import get_program_by_time
 
 logger = logging.getLogger(__name__)
@@ -243,7 +243,7 @@ class RadikoRecorder:
         fromtime: str,
         totime: str,
         fname: str,
-        auto_metadata: bool = True,
+        embed_metadata: bool = False,
         metadata: dict | None = None,
     ) -> subprocess.CompletedProcess:
         """Record radiko station from fromtime to totime to fname.
@@ -253,7 +253,8 @@ class RadikoRecorder:
             fromtime: Start time in format YYYYMMDDHHMM (12 digits)
             totime: End time in format YYYYMMDDHHMM (12 digits)
             fname: Output file name with .m4a extension
-            auto_metadata: Whether to fetch timetable metadata and embed it into .m4a
+            embed_metadata: If True, fetches timetable metadata (title, performer, cover art)
+                and embeds it into the .m4a file. Requires the 'mutagen' library.
             metadata: Optional dictionary of metadata overrides ('title', 'artist', etc.)
 
         Returns:
@@ -395,11 +396,11 @@ class RadikoRecorder:
                 )
 
         # Embed metadata if recording succeeded
-        if res.returncode == 0 and Path(fname).exists() and (auto_metadata or metadata):
+        if res.returncode == 0 and Path(fname).exists() and (embed_metadata or metadata):
             try:
-                prog = get_program_by_time(station_id, fromtime) if auto_metadata else None
+                prog = get_program_by_time(station_id, fromtime) if embed_metadata else None
                 meta_args = metadata or {}
-                embed_metadata(
+                apply_metadata(
                     fname,
                     program=prog,
                     title=meta_args.get("title"),
@@ -410,6 +411,9 @@ class RadikoRecorder:
                     date=meta_args.get("date"),
                     artwork_url=meta_args.get("artwork_url"),
                 )
+            except ImportError:
+                # Re-raise so user knows to install mutagen when they asked for metadata
+                raise
             except Exception as e:
                 logger.warning(f"Failed to embed metadata: {e}")
 

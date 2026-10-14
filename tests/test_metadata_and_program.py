@@ -141,6 +141,17 @@ class TestEmbedMetadata(unittest.TestCase):
             if os.path.exists(dummy_m4a):
                 os.unlink(dummy_m4a)
 
+    def test_missing_mutagen_raises_friendly_error(self):
+        """Verify that missing mutagen raises an informative ImportError."""
+        from pyradiko.metadata import _get_mutagen_mp4
+
+        with patch.dict("sys.modules", {"mutagen.mp4": None}):
+            with self.assertRaises(ImportError) as ctx:
+                _get_mutagen_mp4()
+            msg = str(ctx.exception)
+            self.assertIn("uv add mutagen", msg)
+            self.assertIn("pyradiko[metadata]", msg)
+
 
 class TestValidation(unittest.TestCase):
     def setUp(self):

@@ -15,6 +15,10 @@ PythonでRadiko音源を録音するライブラリ。
 
 ## Installation
 
+### 1. 最低限（録音機能のみ・軽量）
+
+`requests` のみ依存関係に含まれ、`mutagen` はインストールされません。
+
 ```bash
 uv add git+https://github.com/yonesuke/pyradiko.git
 ```
@@ -25,6 +29,22 @@ or with pip:
 pip install git+https://github.com/yonesuke/pyradiko.git
 ```
 
+### 2. メタデータ自動付与機能付き（mutagen 込み）
+
+Radiko公式の番組情報やジャケット写真（カバーアート）を `.m4a` に埋め込む機能もまとめて導入する場合：
+
+```bash
+uv add "pyradiko[metadata] @ git+https://github.com/yonesuke/pyradiko.git"
+```
+
+or with pip:
+
+```bash
+pip install "pyradiko[metadata] @ git+https://github.com/yonesuke/pyradiko.git"
+```
+
+※ 通常インストール後でも、`uv add mutagen` または `pip install mutagen` を追加するだけでメタデータ機能が利用可能になります。
+
 ## Configuration
 
 ```bash
@@ -34,9 +54,7 @@ export RADIKO_PASSWORD="your_password"
 
 ## Usage
 
-### 基本的な録音（メタデータ・カバーアート画像自動埋め込み）
-
-`recorder.record(...)` を実行すると、Radiko公式の番組表APIから番組タイトル、放送日、出演者情報、番組説明、公式カバーアートワーク画像を自動取得し、録音した `.m4a` ファイルにタグとして埋め込みます。
+### 基本的な録音（デフォルト）
 
 ```python
 from pyradiko import RadikoRecorder
@@ -48,8 +66,41 @@ start_time = "202610110100"  # format: YYYYMMDDHHMM
 end_time = "202610110300"    # format: YYYYMMDDHHMM
 output = "audrey.m4a"
 
-# 自動で番組情報・アートワーク画像が埋め込まれます (auto_metadata=True がデフォルト)
+# デフォルトではメタデータ埋め込みは行わず、高速かつ軽量に録音のみを実行します
 res = recorder.record(station, start_time, end_time, output)
+```
+
+### メタデータ・カバーアート画像の自動埋め込み (`embed_metadata=True`)
+
+`embed_metadata=True` を渡すと、Radiko公式の番組表APIから番組タイトル、放送日、出演者情報、番組説明、公式カバーアートワーク画像を自動取得し、録音した `.m4a` ファイルにタグとして埋め込みます。
+
+※ `mutagen` が未インストールの場合は、親切なインストール案内メッセージとともに `ImportError` が発生します。
+
+```python
+res = recorder.record(
+    station,
+    start_time,
+    end_time,
+    output,
+    embed_metadata=True,  # 番組情報と公式ジャケット写真を自動埋め込み
+)
+```
+
+### カスタムメタデータの手動指定
+
+```python
+res = recorder.record(
+    station,
+    start_time,
+    end_time,
+    output,
+    metadata={
+        "title": "オードリーのANN",
+        "artist": "オードリー",
+        "album": "オールナイトニッポン",
+        "genre": "Radio",
+    },
+)
 ```
 
 ### 番組情報の事前取得
@@ -67,25 +118,6 @@ if prog:
     print(prog.img)             # カバーアート画像URL
 ```
 
-### カスタムメタデータの上書き
-
-手動でタグ情報を指定したい場合：
-
-```python
-res = recorder.record(
-    station,
-    start_time,
-    end_time,
-    output,
-    metadata={
-        "title": "オードリーのANN",
-        "artist": "オードリー",
-        "album": "オールナイトニッポン",
-        "genre": "Radio",
-    },
-)
-```
-
 ## Error Handling
 
 認証失敗やAPIエラー時は、専用の例外クラスが送出されます。
@@ -93,3 +125,4 @@ res = recorder.record(
 - `RadikoAuthError`: ログインや認証トークン取得の失敗時（`PermissionError` を継承）
 - `RadikoPlaylistError`: 放送局XMLやHLSプレイリストURL取得の失敗時
 - `RadikoRecordError`: ffmpeg コマンド失敗時
+- `ImportError`: `embed_metadata=True` 指定時に `mutagen` が未インストールの場合

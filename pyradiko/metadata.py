@@ -6,18 +6,33 @@ import logging
 from pathlib import Path
 
 import requests
-from mutagen.mp4 import MP4, MP4Cover
 
 from pyradiko.program import Program
 
 logger = logging.getLogger(__name__)
 
 
-def _detect_image_format(data: bytes) -> int:
+def _get_mutagen_mp4():
+    """Import MP4 and MP4Cover from mutagen with friendly error message."""
+    try:
+        from mutagen.mp4 import MP4, MP4Cover
+
+        return MP4, MP4Cover
+    except ImportError as e:
+        raise ImportError(
+            "Metadata embedding requires the 'mutagen' library.\n"
+            "Please install it using:\n"
+            "  uv add mutagen\n"
+            "or:\n"
+            "  pip install 'pyradiko[metadata]'"
+        ) from e
+
+
+def _detect_image_format(data: bytes, mp4_cover_cls) -> int:
     """Detect image format for MP4Cover."""
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        return MP4Cover.FORMAT_PNG
-    return MP4Cover.FORMAT_JPEG
+        return mp4_cover_cls.FORMAT_PNG
+    return mp4_cover_cls.FORMAT_JPEG
 
 
 def fetch_image_data(url: str, session: requests.Session | None = None) -> bytes | None:
@@ -49,6 +64,8 @@ def embed_metadata(
 ) -> None:
     """Embed metadata tags and cover artwork into an M4A audio file.
 
+    Requires the optional dependency 'mutagen'.
+
     Args:
         filepath: Path to the .m4a file.
         program: Optional Program instance to extract metadata from.
@@ -66,7 +83,8 @@ def embed_metadata(
     if not path.exists():
         raise FileNotFoundError(f"File not found: {path}")
 
-    audio = MP4(path)
+    mp4_cls, mp4_cover_cls = _get_mutagen_mp4()
+    audio = mp4_cls(path)
 
     # Resolve metadata fields from explicit arguments or Program object
     final_title = title
@@ -115,8 +133,8 @@ def embed_metadata(
             image_bytes = fetch_image_data(target_url, session=session)
 
     if image_bytes:
-        img_format = _detect_image_format(image_bytes)
-        audio["covr"] = [MP4Cover(image_bytes, imageformat=img_format)]
+        img_format = _detect_image_format(image_bytes, mp4_cover_cls)
+        audio["covr"] = [mp4_cover_cls(image_bytes, imageformat=img_format)]
 
     audio.save()
     logger.debug(f"Metadata embedded successfully into {path}")

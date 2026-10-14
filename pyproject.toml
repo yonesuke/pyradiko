@@ -11,6 +11,13 @@ license = {file = 'LICENSE'}
 requires-python = '>=3.10'
 dependencies = [
     'requests>=2.28.0',
+]
+
+[project.optional-dependencies]
+metadata = [
+    'mutagen>=1.47.0',
+]
+all = [
     'mutagen>=1.47.0',
 ]
 
