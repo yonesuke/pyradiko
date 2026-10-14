@@ -8,8 +8,6 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
-from mutagen.mp4 import MP4
-
 from pyradiko.main import RadikoRecorder
 from pyradiko.metadata import embed_metadata
 from pyradiko.program import (
@@ -127,6 +125,11 @@ class TestEmbedMetadata(unittest.TestCase):
                 program=prog,
                 artwork_data=dummy_jpeg,
             )
+
+            try:
+                from mutagen.mp4 import MP4
+            except ImportError:
+                self.skipTest("mutagen is not installed")
 
             # Inspect tags with mutagen
             audio = MP4(dummy_m4a)

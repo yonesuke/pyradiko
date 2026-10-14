@@ -19,4 +19,4 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - uses: astral-sh/setup-uv@v5
       - name: Run unit tests
-        run: uv run python -m unittest tests.test_metadata_and_program
+        run: uv run --extra metadata python -m unittest tests.test_metadata_and_program
